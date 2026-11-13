@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <!-- Balise indispensable pour que l'affichage s'adapte parfaitement aux mobiles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Une petite surprise...</title>
+    <style>
+        /* Réinitialisation et fond */
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #fdfbf7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Empêche le défilement */
+        }
+
+        #message-top {
+            font-size: 1.4rem;
+            color: #333;
+            margin-bottom: 60px;
+            text-align: center;
+            padding: 0 20px;
+            transition: opacity 0.5s ease;
+            font-style: italic;
+        }
+
+        /* Conteneur principal de la boîte */
+        .gift-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* Enlève le carré bleu au clic sur mobile */
+            user-select: none;
+        }
+
+        /* Animation de base (respiration douce pour inciter au clic) */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .gift-container.idle {
+            animation: breathe 2s infinite ease-in-out;
+        }
+
+        /* La boîte (Bleu marine) */
+        .box-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 140px;
+            background-color: #1a2a40;
+            border-radius: 5px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        /* Le ruban vertical (Or) */
+        .box-bottom::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 26px;
+            height: 100%;
+            background-color: #d4af37;
+        }
+
+        /* Le couvercle */
+        .box-lid {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 176px;
+            height: 40px;
+            background-color: #1a2a40;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 4;
+            transition: transform 0.1s ease;
+        }
+        /* Ruban sur le couvercle */
+        .box-lid::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 26px;
+            height: 100%;
+            background-color: #d4af37;
+        }
+
+        /* Le Nœud du ruban */
+        .bow {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 20px;
+            z-index: 5;
+        }
+        .bow::before, .bow::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border: 6px solid #d4af37;
+            border-radius: 50%;
+            top: -12px;
+        }
+        .bow::before { left: -26px; }
+        .bow::after { right: -12px; }
+
+        /* Animation de secousse au clic */
+        @keyframes shake {
+            0% { transform: translateX(0) rotate(0); }
+            25% { transform: translateX(-4px) rotate(-3deg); }
+            50% { transform: translateX(4px) rotate(3deg); }
+            75% { transform: translateX(-4px) rotate(-3deg); }
+            100% { transform: translateX(0) rotate(0); }
+        }
+        .shake-anim {
+            animation: shake 0.2s ease-in-out;
+        }
+
+        /* Le "Cadeau" (Le fuck) */
+        .surprise-content {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-size: 110px;
+            z-index: 3;
+            /* Effet ressort (spring) */
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-origin: bottom center;
+        }
+
+        /* --- ÉTAT OUVERT --- */
+        .gift-container.open .box-lid {
+            /* Le couvercle saute en l'air et tourne */
+            transform: translate(-50%, -180px) rotate(25deg);
+            opacity: 0;
+            transition: transform 0.5s ease-out, opacity 0.3s ease 0.2s;
+        }
+        .gift-container.open .bow {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .gift-container.open .surprise-content {
+            /* Le doigt jaillit */
+            transform: translateX(-50%) translateY(-130px) scale(1);
+        }
+
+        /* Texte final (machine à écrire) */
+        #message-bottom {
+            margin-top: 60px;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #2c3e50;
+            min-height: 48px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Le texte d'appât -->
+    <div id="message-top">J'ai un petit truc pour toi... Tapote pour l'ouvrir !</div>
+
+    <!-- La boîte -->
+    <div class="gift-container idle" id="gift">
+        <div class="surprise-content" id="finger">🖕</div>
+        <div class="box-lid" id="lid">
+            <div class="bow"></div>
+        </div>
+        <div class="box-bottom"></div>
+    </div>
+
+    <!-- Le texte de chute -->
+    <div id="message-bottom"></div>
+
+    <script>
+        const gift = document.getElementById('gift');
+        const messageTop = document.getElementById('message-top');
+        const messageBottom = document.getElementById('message-bottom');
+        const lid = document.getElementById('lid');
+        
+        let clickCount = 0;
+        const clicksNeeded = 7; // Il faut 7 clics pour l'ouvrir
+        const finalMessage = "Je t'ai bien eu !";
+
+        gift.addEventListener('click', () => {
+            if (clickCount >= clicksNeeded) return; // Stoppe l'action si c'est déjà ouvert
+
+            clickCount++;
+
+            // Petite vibration sur les téléphones Android pour le retour haptique
+            if (navigator.vibrate) {
+                navigator.vibrate(40);
+            }
+
+            if (clickCount < clicksNeeded) {
+                // Relance l'animation de secousse
+                gift.classList.remove('idle');
+                gift.classList.remove('shake-anim');
+                void gift.offsetWidth; // Astuce pour forcer le navigateur à rejouer l'animation
+                gift.classList.add('shake-anim');
+                
+                // Fait légèrement sursauter le couvercle pour faire monter le suspense
+                // Le couvercle monte de 2px à chaque clic
+                const baseTransform = -50; 
+                lid.style.transform = `translate(${baseTransform}%, -${clickCount * 2}px) rotate(${clickCount % 2 === 0 ? 1 : -1}deg)`;
+            } else {
+                // --- OUVERTURE ---
+                
+                // Grosse vibration finale
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100, 50, 300]); 
+                }
+                
+                gift.classList.remove('idle');
+                gift.classList.remove('shake-anim');
+                gift.classList.add('open'); // Déclenche les animations CSS d'ouverture
+                
+                messageTop.style.opacity = '0'; // Fait disparaître le premier texte
+
+                // Déclenche le texte machine à écrire avec un léger délai
+                setTimeout(() => {
+                    typeWriter(finalMessage, 0);
+                }, 600);
+            }
+        });
+
+        // Fonction pour l'effet "machine à écrire"
+        function typeWriter(text, i) {
+            if (i < text.length) {
+                messageBottom.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(() => typeWriter(text, i), 80); // Vitesse de frappe (80ms par lettre)
+            }
+        }
+    </script>
+</body>
+</html>
