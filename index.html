@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Une petite surprise...</title>
-    <!-- Librairie pour l'explosion de confettis -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -17,6 +15,16 @@
             background-color: #fdfbf7;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
         }
 
         #message-top {
@@ -68,7 +76,6 @@
             background-color: #d4af37;
         }
 
-        /* Initiales sur la boîte pour rendre le piège crédible */
         .monogram {
             position: absolute;
             bottom: 25px;
@@ -139,7 +146,6 @@
             animation: shake 0.2s ease-in-out;
         }
 
-        /* Animation du couvercle qui s'écrase avant d'exploser */
         @keyframes compress {
             0% { transform: translate(-50%, 0) scaleY(1); }
             100% { transform: translate(-50%, 5px) scaleY(0.9); }
@@ -159,7 +165,6 @@
             transform-origin: bottom center;
         }
 
-        /* --- ÉTAT OUVERT --- */
         .gift-container.open .box-lid {
             transform: translate(-50%, -180px) rotate(25deg);
             opacity: 0;
@@ -186,6 +191,8 @@
 </head>
 <body>
 
+    <canvas id="confetti-canvas"></canvas>
+
     <div id="message-top">J'ai un petit truc pour toi... Tapote pour l'ouvrir !</div>
 
     <div class="gift-container idle" id="gift">
@@ -204,13 +211,70 @@
         const messageTop = document.getElementById('message-top');
         const messageBottom = document.getElementById('message-bottom');
         const lid = document.getElementById('lid');
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
         
         let clickCount = 0;
-        const clicksNeeded = 7; 
-        // Tu peux modifier la phrase de chute ici
+        const clicksNeeded = 7;
         const finalMessage = "Je t'ai bien eu !";
 
-        gift.addEventListener('click', (e) => {
+        // Moteur de confettis autonome (sans librairie externe)
+        function launchConfetti(originX, originY) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#d4af37', '#1a2a40', '#e74c3c', '#f39c12', '#2ecc71'];
+            const particles = [];
+
+            for (let i = 0; i < 130; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 14 + 5;
+                particles.push({
+                    x: originX,
+                    y: originY,
+                    vx: Math.cos(angle) * speed * (0.7 + Math.random() * 0.6),
+                    vy: Math.sin(angle) * speed - 9,
+                    size: Math.random() * 8 + 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 14
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+
+                for (const p of particles) {
+                    p.vy += 0.42;      // Gravité
+                    p.vx *= 0.985;     // Résistance de l'air
+                    p.vy *= 0.985;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rotation += p.rotationSpeed;
+
+                    if (p.y < canvas.height + 20) {
+                        active = true;
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate((p.rotation * Math.PI) / 180);
+                        // Effet de papier qui tournoie en 3D
+                        ctx.scale(1, Math.cos((p.rotation * Math.PI) / 180));
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                        ctx.restore();
+                    }
+                }
+
+                if (active) {
+                    requestAnimationFrame(animate);
+                }
+            }
+
+            animate();
+        }
+
+        gift.addEventListener('click', () => {
             if (clickCount >= clicksNeeded) return;
 
             clickCount++;
@@ -222,46 +286,32 @@
             if (clickCount < clicksNeeded) {
                 gift.classList.remove('idle');
                 gift.classList.remove('shake-anim');
-                void gift.offsetWidth; 
+                void gift.offsetWidth;
                 gift.classList.add('shake-anim');
                 
-                const baseTransform = -50; 
-                lid.style.transform = `translate(${baseTransform}%, -${clickCount * 2}px) rotate(${clickCount % 2 === 0 ? 1 : -1}deg)`;
+                lid.style.transform = `translate(-50%, -${clickCount * 2}px) rotate(${clickCount % 2 === 0 ? 1 : -1}deg)`;
                 
-                // Au dernier clic avant ouverture, on simule l'écrasement du ressort
                 if (clickCount === clicksNeeded - 1) {
                     gift.classList.add('compress-anim');
                 }
-
             } else {
-                // --- OUVERTURE ---
                 if (navigator.vibrate) {
-                    navigator.vibrate([100, 50, 100, 50, 300]); 
+                    navigator.vibrate([100, 50, 100, 50, 300]);
                 }
                 
                 gift.classList.remove('idle');
                 gift.classList.remove('shake-anim');
                 gift.classList.remove('compress-anim');
-                gift.classList.add('open'); 
-                
-                // Lancement des confettis !
-                const rect = gift.getBoundingClientRect();
-                const xOrigin = (rect.left + (rect.width / 2)) / window.innerWidth;
-                const yOrigin = (rect.top + (rect.height / 2)) / window.innerHeight;
+                gift.classList.add('open');
 
-                confetti({
-                    particleCount: 150,
-                    spread: 100,
-                    origin: { x: xOrigin, y: yOrigin },
-                    colors: ['#d4af37', '#1a2a40', '#ffffff', '#ff0000'], // Or, Bleu, Blanc, Rouge
-                    zIndex: 1000
-                });
+                const rect = gift.getBoundingClientRect();
+                launchConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
                 
-                messageTop.style.opacity = '0'; 
+                messageTop.style.opacity = '0';
 
                 setTimeout(() => {
                     typeWriter(finalMessage, 0);
-                }, 100);
+                }, 50);
             }
         });
 
@@ -269,7 +319,7 @@
             if (i < text.length) {
                 messageBottom.innerHTML += text.charAt(i);
                 i++;
-                setTimeout(() => typeWriter(text, i), 70); 
+                setTimeout(() => typeWriter(text, i), 70);
             }
         }
     </script>
