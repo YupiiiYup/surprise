@@ -2,11 +2,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <!-- Balise indispensable pour que l'affichage s'adapte parfaitement aux mobiles -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Une petite surprise...</title>
+    <!-- Librairie pour l'explosion de confettis -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* Réinitialisation et fond */
         body {
             margin: 0;
             height: 100vh;
@@ -16,7 +16,7 @@
             justify-content: center;
             background-color: #fdfbf7;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* Empêche le défilement */
+            overflow: hidden;
         }
 
         #message-top {
@@ -29,17 +29,15 @@
             font-style: italic;
         }
 
-        /* Conteneur principal de la boîte */
         .gift-container {
             position: relative;
             width: 200px;
             height: 200px;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* Enlève le carré bleu au clic sur mobile */
+            -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
 
-        /* Animation de base (respiration douce pour inciter au clic) */
         @keyframes breathe {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.03); }
@@ -48,7 +46,6 @@
             animation: breathe 2s infinite ease-in-out;
         }
 
-        /* La boîte (Bleu marine) */
         .box-bottom {
             position: absolute;
             bottom: 0;
@@ -61,7 +58,6 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             z-index: 2;
         }
-        /* Le ruban vertical (Or) */
         .box-bottom::after {
             content: '';
             position: absolute;
@@ -72,7 +68,22 @@
             background-color: #d4af37;
         }
 
-        /* Le couvercle */
+        /* Initiales sur la boîte pour rendre le piège crédible */
+        .monogram {
+            position: absolute;
+            bottom: 25px;
+            width: 100%;
+            text-align: center;
+            color: #d4af37;
+            font-family: 'Georgia', serif;
+            font-size: 22px;
+            font-style: italic;
+            font-weight: bold;
+            z-index: 6;
+            letter-spacing: 2px;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
+        }
+
         .box-lid {
             position: absolute;
             top: 40px;
@@ -86,7 +97,6 @@
             z-index: 4;
             transition: transform 0.1s ease;
         }
-        /* Ruban sur le couvercle */
         .box-lid::after {
             content: '';
             position: absolute;
@@ -97,7 +107,6 @@
             background-color: #d4af37;
         }
 
-        /* Le Nœud du ruban */
         .bow {
             position: absolute;
             top: -20px;
@@ -119,7 +128,6 @@
         .bow::before { left: -26px; }
         .bow::after { right: -12px; }
 
-        /* Animation de secousse au clic */
         @keyframes shake {
             0% { transform: translateX(0) rotate(0); }
             25% { transform: translateX(-4px) rotate(-3deg); }
@@ -131,7 +139,15 @@
             animation: shake 0.2s ease-in-out;
         }
 
-        /* Le "Cadeau" (Le fuck) */
+        /* Animation du couvercle qui s'écrase avant d'exploser */
+        @keyframes compress {
+            0% { transform: translate(-50%, 0) scaleY(1); }
+            100% { transform: translate(-50%, 5px) scaleY(0.9); }
+        }
+        .compress-anim .box-lid {
+            animation: compress 0.1s forwards;
+        }
+
         .surprise-content {
             position: absolute;
             bottom: 20px;
@@ -139,53 +155,48 @@
             transform: translateX(-50%) scale(0);
             font-size: 110px;
             z-index: 3;
-            /* Effet ressort (spring) */
             transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-origin: bottom center;
         }
 
         /* --- ÉTAT OUVERT --- */
         .gift-container.open .box-lid {
-            /* Le couvercle saute en l'air et tourne */
             transform: translate(-50%, -180px) rotate(25deg);
             opacity: 0;
-            transition: transform 0.5s ease-out, opacity 0.3s ease 0.2s;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease 0.2s;
         }
         .gift-container.open .bow {
             opacity: 0;
             transition: opacity 0.2s;
         }
         .gift-container.open .surprise-content {
-            /* Le doigt jaillit */
             transform: translateX(-50%) translateY(-130px) scale(1);
         }
 
-        /* Texte final (machine à écrire) */
         #message-bottom {
             margin-top: 60px;
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 900;
             color: #2c3e50;
             min-height: 48px;
             text-align: center;
+            padding: 0 15px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Le texte d'appât -->
     <div id="message-top">J'ai un petit truc pour toi... Tapote pour l'ouvrir !</div>
 
-    <!-- La boîte -->
     <div class="gift-container idle" id="gift">
         <div class="surprise-content" id="finger">🖕</div>
         <div class="box-lid" id="lid">
             <div class="bow"></div>
         </div>
-        <div class="box-bottom"></div>
+        <div class="box-bottom">
+        </div>
     </div>
 
-    <!-- Le texte de chute -->
     <div id="message-bottom"></div>
 
     <script>
@@ -195,57 +206,70 @@
         const lid = document.getElementById('lid');
         
         let clickCount = 0;
-        const clicksNeeded = 7; // Il faut 7 clics pour l'ouvrir
+        const clicksNeeded = 7; 
+        // Tu peux modifier la phrase de chute ici
         const finalMessage = "Je t'ai bien eu !";
 
-        gift.addEventListener('click', () => {
-            if (clickCount >= clicksNeeded) return; // Stoppe l'action si c'est déjà ouvert
+        gift.addEventListener('click', (e) => {
+            if (clickCount >= clicksNeeded) return;
 
             clickCount++;
 
-            // Petite vibration sur les téléphones Android pour le retour haptique
             if (navigator.vibrate) {
                 navigator.vibrate(40);
             }
 
             if (clickCount < clicksNeeded) {
-                // Relance l'animation de secousse
                 gift.classList.remove('idle');
                 gift.classList.remove('shake-anim');
-                void gift.offsetWidth; // Astuce pour forcer le navigateur à rejouer l'animation
+                void gift.offsetWidth; 
                 gift.classList.add('shake-anim');
                 
-                // Fait légèrement sursauter le couvercle pour faire monter le suspense
-                // Le couvercle monte de 2px à chaque clic
                 const baseTransform = -50; 
                 lid.style.transform = `translate(${baseTransform}%, -${clickCount * 2}px) rotate(${clickCount % 2 === 0 ? 1 : -1}deg)`;
+                
+                // Au dernier clic avant ouverture, on simule l'écrasement du ressort
+                if (clickCount === clicksNeeded - 1) {
+                    gift.classList.add('compress-anim');
+                }
+
             } else {
                 // --- OUVERTURE ---
-                
-                // Grosse vibration finale
                 if (navigator.vibrate) {
                     navigator.vibrate([100, 50, 100, 50, 300]); 
                 }
                 
                 gift.classList.remove('idle');
                 gift.classList.remove('shake-anim');
-                gift.classList.add('open'); // Déclenche les animations CSS d'ouverture
+                gift.classList.remove('compress-anim');
+                gift.classList.add('open'); 
                 
-                messageTop.style.opacity = '0'; // Fait disparaître le premier texte
+                // Lancement des confettis !
+                const rect = gift.getBoundingClientRect();
+                const xOrigin = (rect.left + (rect.width / 2)) / window.innerWidth;
+                const yOrigin = (rect.top + (rect.height / 2)) / window.innerHeight;
 
-                // Déclenche le texte machine à écrire avec un léger délai
+                confetti({
+                    particleCount: 150,
+                    spread: 100,
+                    origin: { x: xOrigin, y: yOrigin },
+                    colors: ['#d4af37', '#1a2a40', '#ffffff', '#ff0000'], // Or, Bleu, Blanc, Rouge
+                    zIndex: 1000
+                });
+                
+                messageTop.style.opacity = '0'; 
+
                 setTimeout(() => {
                     typeWriter(finalMessage, 0);
-                }, 600);
+                }, 100);
             }
         });
 
-        // Fonction pour l'effet "machine à écrire"
         function typeWriter(text, i) {
             if (i < text.length) {
                 messageBottom.innerHTML += text.charAt(i);
                 i++;
-                setTimeout(() => typeWriter(text, i), 80); // Vitesse de frappe (80ms par lettre)
+                setTimeout(() => typeWriter(text, i), 70); 
             }
         }
     </script>
